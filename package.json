@@ -1,0 +1,16 @@
+{
+  "name": "electron-sample-app",
+  "version": "1.0.0",
+  "description": "Learning electron basis.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "Ivan Robles",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^39.2.7"
+  }
+}
