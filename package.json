@@ -31,7 +31,7 @@
     }
   },
   "keywords": [],
-  "author": "Ivan Robles",
+  "author": "Ivan Robles <contact@ivanrobles.pro>",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
