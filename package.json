@@ -8,6 +8,7 @@
     "dist:mac:arm64": "electron-builder --mac --arm64",
     "dist:mac:x64": "electron-builder --mac --x64",
     "dist:linux:x64": "electron-builder --linux --x64",
+    "dist:linux:arm64": "electron-builder --linux --arm64",
     "dist:win:x64": "electron-builder --win --x64"
   },
   "build": {

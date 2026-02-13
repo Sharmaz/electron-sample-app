@@ -23,12 +23,15 @@ jobs:
           - os: macos-latest
             dist_cmd: dist:mac:arm64
             artifact_name: macos-arm64
-          - os: macos-15-large
+          - os: macos-latest
             dist_cmd: dist:mac:x64
             artifact_name: macos-x64
           - os: ubuntu-latest
             dist_cmd: dist:linux:x64
             artifact_name: linux-x64
+          - os: ubuntu-latest
+            dist_cmd: dist:linux:arm64
+            artifact_name: linux-arm64
           - os: windows-latest
             dist_cmd: dist:win:x64
             artifact_name: win-x64
