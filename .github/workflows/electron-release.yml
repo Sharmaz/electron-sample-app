@@ -35,6 +35,9 @@ jobs:
           - os: windows-latest
             dist_cmd: dist:win:x64
             artifact_name: win-x64
+          - os: windows-latest
+            dist_cmd: dist:win:arm64
+            artifact_name: win-arm64
 
     runs-on: ${{ matrix.os }}
 
