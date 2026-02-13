@@ -1,16 +1,41 @@
 {
-  "name": "electron-sample-app",
-  "version": "1.0.0",
+  "name": "test-desktop-app",
+  "version": "0.0.1",
   "description": "Learning electron basis.",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist:mac:arm64": "electron-builder --mac --arm64",
+    "dist:mac:x64": "electron-builder --mac --x64",
+    "dist:linux:x64": "electron-builder --linux --x64",
+    "dist:win:x64": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.electron.sample-app",
+    "productName": "Electron Sample App",
+    "files": [
+      "main.js",
+      "index.html"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": ["deb", "rpm", "tar.gz"]
+    },
+    "win": {
+      "target": "nsis"
+    }
   },
   "keywords": [],
   "author": "Ivan Robles",
   "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
-    "electron": "^39.2.7"
+    "electron": "^39.2.7",
+    "electron-builder": "^26.7.0"
   }
 }
