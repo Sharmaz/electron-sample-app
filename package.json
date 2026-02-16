@@ -17,17 +17,32 @@
     "productName": "Electron Sample App",
     "files": [
       "main.js",
-      "index.html"
+      "preload.js",
+      "renderer.js",
+      "styles.css",
+      "index.html",
+      "services/**"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Sharmaz",
+        "repo": "electron-sample-app"
+      }
     ],
     "artifactName": "test-desktop-app-${version}-${arch}.${ext}",
     "directories": {
       "output": "dist"
     },
     "mac": {
-      "target": "dmg"
+      "target": ["dmg", "zip"]
     },
     "linux": {
-      "target": ["deb", "rpm", "tar.gz"]
+      "target": [
+        "deb",
+        "rpm",
+        "tar.gz"
+      ]
     },
     "deb": {
       "artifactName": "test-desktop-app_${version}_${arch}.${ext}"
@@ -46,5 +61,8 @@
   "devDependencies": {
     "electron": "^39.2.7",
     "electron-builder": "^26.7.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.7.3"
   }
 }
