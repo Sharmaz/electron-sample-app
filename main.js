@@ -4,6 +4,7 @@ const AutoUpdater = require('./services/AutoUpdater')
 
 let mainWindow = null
 let autoUpdaterService = null
+let updateMenuItem = null
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({
@@ -17,8 +18,32 @@ const createWindow = () => {
   mainWindow.loadFile('index.html')
 }
 
+function updateMenuItemState({ label, enabled, click }) {
+  if (!updateMenuItem) return
+  updateMenuItem.label = label
+  updateMenuItem.enabled = enabled
+  if (click) {
+    updateMenuItem.click = click
+  } else {
+    updateMenuItem.click = () => {
+      if (autoUpdaterService) {
+        autoUpdaterService.checkForUpdatesManual()
+      }
+    }
+  }
+}
+
 function createAppMenu() {
   const isMac = process.platform === 'darwin'
+
+  const updateItem = {
+    label: 'Check for Updates...',
+    click: () => {
+      if (autoUpdaterService) {
+        autoUpdaterService.checkForUpdatesManual()
+      }
+    },
+  }
 
   const template = [
     ...(isMac
@@ -26,14 +51,7 @@ function createAppMenu() {
           label: app.name,
           submenu: [
             { role: 'about' },
-            {
-              label: 'Check for Updates...',
-              click: () => {
-                if (autoUpdaterService) {
-                  autoUpdaterService.checkForUpdatesManual()
-                }
-              },
-            },
+            updateItem,
             { type: 'separator' },
             { role: 'quit' },
           ],
@@ -63,32 +81,36 @@ function createAppMenu() {
       ? [{
           label: 'Help',
           submenu: [
-            {
-              label: 'Check for Updates...',
-              click: () => {
-                if (autoUpdaterService) {
-                  autoUpdaterService.checkForUpdatesManual()
-                }
-              },
-            },
+            updateItem,
           ],
         }]
       : []),
   ]
 
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+
+  // Guardar referencia al menu item para actualizarlo dinámicamente
+  if (isMac) {
+    updateMenuItem = menu.items[0].submenu.items[1]
+  } else {
+    const helpMenu = menu.items[menu.items.length - 1]
+    updateMenuItem = helpMenu.submenu.items[0]
+  }
 }
 
 app.whenReady().then(() => {
   createWindow()
+  createAppMenu()
 
   // Auto-updater solo funciona en app empaquetada
   if (app.isPackaged) {
-    autoUpdaterService = new AutoUpdater(mainWindow)
+    autoUpdaterService = new AutoUpdater(mainWindow, {
+      onMenuUpdate: updateMenuItemState,
+      releaseUrl: 'https://github.com/Sharmaz/electron-sample-app/releases',
+    })
     autoUpdaterService.startPeriodicChecks()
   }
-
-  createAppMenu()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

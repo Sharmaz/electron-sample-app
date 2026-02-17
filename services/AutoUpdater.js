@@ -1,15 +1,20 @@
-const { dialog, ipcMain } = require('electron');
+const { dialog, ipcMain, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 
+const SUPPORTS_AUTO_UPDATE = process.platform === 'win32';
+
 class AutoUpdater {
-  constructor(mainWindow) {
+  constructor(mainWindow, { onMenuUpdate, releaseUrl } = {}) {
     this.mainWindow = mainWindow;
     this.checkInterval = null;
     this.isManualCheck = false;
+    this.onMenuUpdate = onMenuUpdate || (() => {});
+    this.releaseUrl = releaseUrl || '';
+    this.pendingVersion = null;
 
-    // CRITICO: nunca descargar ni instalar automáticamente
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = false;
+    autoUpdater.forceCodeSigning = false;
     autoUpdater.logger = console;
 
     this._setupEvents();
@@ -17,20 +22,29 @@ class AutoUpdater {
   }
 
   _setupEvents() {
-    // Update disponible → notificar al renderer (banner)
     autoUpdater.on('update-available', (info) => {
       console.log('[AutoUpdater] Update available:', info.version);
+      this.pendingVersion = info.version;
       this.isManualCheck = false;
-      this._sendToRenderer('update:available', {
-        version: info.version,
-        releaseDate: info.releaseDate,
-        releaseNotes: info.releaseNotes,
-      });
+
+      if (SUPPORTS_AUTO_UPDATE) {
+        // Windows: descargar silenciosamente
+        this.onMenuUpdate({ label: 'Downloading Update...', enabled: false });
+        autoUpdater.downloadUpdate();
+      } else {
+        // macOS/Linux: notificar, dialog al hacer check manual
+        this.onMenuUpdate({
+          label: `Update Available: ${info.version}`,
+          enabled: true,
+          click: () => this._showUpdateAvailableDialog(info.version),
+        });
+        this._sendToRenderer('update:available', { version: info.version });
+      }
     });
 
-    // No hay update → solo mostrar dialog si fue check manual
     autoUpdater.on('update-not-available', (info) => {
       console.log('[AutoUpdater] Up to date:', info.version);
+      this.onMenuUpdate({ label: 'Check for Updates...', enabled: true });
       if (this.isManualCheck) {
         this.isManualCheck = false;
         dialog.showMessageBox(this.mainWindow, {
@@ -43,26 +57,24 @@ class AutoUpdater {
       }
     });
 
-    // Progreso de descarga → enviar al renderer (progress bar)
     autoUpdater.on('download-progress', (progress) => {
       console.log('[AutoUpdater] Download progress:', `${progress.percent.toFixed(1)}%`);
-      this._sendToRenderer('update:download-progress', {
-        percent: progress.percent,
-        bytesPerSecond: progress.bytesPerSecond,
-        transferred: progress.transferred,
-        total: progress.total,
-      });
     });
 
-    // Descarga completa → notificar al renderer
+    // Solo se dispara en Windows (único que descarga)
     autoUpdater.on('update-downloaded', (info) => {
       console.log('[AutoUpdater] Update downloaded:', info.version);
+      this.onMenuUpdate({
+        label: `Restart to Update to ${info.version}`,
+        enabled: true,
+        click: () => autoUpdater.quitAndInstall(false, true),
+      });
       this._sendToRenderer('update:downloaded', { version: info.version });
     });
 
-    // Error → dialog solo si fue check manual
     autoUpdater.on('error', (error) => {
       console.error('[AutoUpdater] Error:', error.message);
+      this.onMenuUpdate({ label: 'Check for Updates...', enabled: true });
       if (this.isManualCheck) {
         this.isManualCheck = false;
         dialog.showMessageBox(this.mainWindow, {
@@ -73,34 +85,42 @@ class AutoUpdater {
           buttons: ['OK'],
         });
       }
-      this._sendToRenderer('update:error', { message: error.message });
     });
   }
 
   _setupIpcHandlers() {
-    // El renderer puede pedir check, download e install via IPC invoke
-    ipcMain.handle('update:check', async () => {
-      try {
-        const result = await autoUpdater.checkForUpdates();
-        return { success: true, version: result?.updateInfo?.version };
-      } catch (error) {
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle('update:download', async () => {
-      try {
-        await autoUpdater.downloadUpdate();
-        return { success: true };
-      } catch (error) {
-        return { success: false, error: error.message };
-      }
-    });
-
     ipcMain.handle('update:install', () => {
-      // quitAndInstall(isSilent, isForceRunAfter)
-      autoUpdater.quitAndInstall(false, true);
+      if (SUPPORTS_AUTO_UPDATE) {
+        autoUpdater.quitAndInstall(false, true);
+      }
     });
+
+    ipcMain.handle('update:open-release', () => {
+      this._openReleasePage(this.pendingVersion);
+    });
+  }
+
+  _showUpdateAvailableDialog(version) {
+    dialog.showMessageBox(this.mainWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: `Version ${version} is available.`,
+      detail: 'Would you like to go to the download page?',
+      buttons: ['Download', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+    }).then(({ response }) => {
+      if (response === 0) {
+        this._openReleasePage(version);
+      }
+    });
+  }
+
+  _openReleasePage(version) {
+    const url = version
+      ? `${this.releaseUrl}/tag/v${version}`
+      : this.releaseUrl;
+    shell.openExternal(url);
   }
 
   _sendToRenderer(channel, data) {
@@ -109,18 +129,20 @@ class AutoUpdater {
     }
   }
 
-  // Check silencioso (periódico) — no muestra nada si no hay update
   checkForUpdates() {
+    this.onMenuUpdate({ label: 'Checking for Updates...', enabled: false });
     autoUpdater.checkForUpdates().catch((err) => {
       console.error('[AutoUpdater] Scheduled check failed:', err.message);
+      this.onMenuUpdate({ label: 'Check for Updates...', enabled: true });
     });
   }
 
-  // Check manual (menú) — muestra dialog si no hay update o si hay error
   checkForUpdatesManual() {
     this.isManualCheck = true;
+    this.onMenuUpdate({ label: 'Checking for Updates...', enabled: false });
     autoUpdater.checkForUpdates().catch((err) => {
       this.isManualCheck = false;
+      this.onMenuUpdate({ label: 'Check for Updates...', enabled: true });
       dialog.showMessageBox(this.mainWindow, {
         type: 'error',
         title: 'Update Error',
@@ -131,7 +153,6 @@ class AutoUpdater {
     });
   }
 
-  // Inicia checks periódicos (default: cada 6 horas)
   startPeriodicChecks(intervalMs = 6 * 60 * 60 * 1000) {
     this.checkForUpdates();
     this.checkInterval = setInterval(() => {
@@ -148,9 +169,8 @@ class AutoUpdater {
 
   destroy() {
     this.stopPeriodicChecks();
-    ipcMain.removeHandler('update:check');
-    ipcMain.removeHandler('update:download');
     ipcMain.removeHandler('update:install');
+    ipcMain.removeHandler('update:open-release');
   }
 }
 

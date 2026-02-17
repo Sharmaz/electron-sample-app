@@ -1,6 +1,6 @@
 {
   "name": "test-desktop-app",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Learning electron basis.",
   "main": "main.js",
   "scripts": {
@@ -35,7 +35,8 @@
       "output": "dist"
     },
     "mac": {
-      "target": ["dmg", "zip"]
+      "target": ["dmg", "zip"],
+      "identity": null
     },
     "linux": {
       "target": [

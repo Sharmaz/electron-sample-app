@@ -1,17 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const INVOKE_CHANNELS = [
-  'update:check',
-  'update:download',
   'update:install',
+  'update:open-release',
 ];
 
 const RECEIVE_CHANNELS = [
   'update:available',
-  'update:not-available',
-  'update:download-progress',
   'update:downloaded',
-  'update:error',
 ];
 
 contextBridge.exposeInMainWorld('electron', {

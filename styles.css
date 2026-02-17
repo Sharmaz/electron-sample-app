@@ -25,21 +25,10 @@
   white-space: nowrap;
 }
 
-.update-banner button:hover {
-  background: #e8e8e8;
-}
-
-#progress-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#progress-container.hidden {
+.update-banner button.hidden {
   display: none;
 }
 
-progress {
-  width: 200px;
-  height: 6px;
+.update-banner button:hover {
+  background: #e8e8e8;
 }
